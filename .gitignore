@@ -1,0 +1,38 @@
+# ===== Vivado 生成文件/目录 =====
+.Xil/
+*.jou
+*.log
+*.str
+*.wdb
+*.wcfg
+*.wvcd
+*.vcd
+*.bit
+*.ltx
+*.dcp
+*.rpt
+*.bmm
+*.xpe
+*.xwdf
+*.pdb
+*.prj
+
+# Vivado 工程自动生成目录（保留 Clock.xpr 与 Clock.srcs/）
+Clock.cache/
+Clock.gen/
+Clock.hw/
+Clock.ip_user_files/
+Clock.runs/
+Clock.sim/
+
+# xsim 命令行编译产物
+xvlog.pb
+xelab.pb
+xsim.dir/
+
+# ===== 操作系统/编辑器 =====
+Thumbs.db
+Desktop.ini
+.DS_Store
+.vscode/
+.idea/
