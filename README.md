@@ -126,9 +126,9 @@
 | `clk_div` | `clk`, `rst_n` | `flag_1s`, `flag_500hz`, `flag_2hz` | 分频，产生周期使能脉冲（非时钟脚） |
 | `key_debounce` | `clk`, `rst_n`, `key_in[5:0]` | `key_pulse[5:0]`, `key_hold[5:0]` | 消抖 + 单拍脉冲 + 长按标志 |
 | `fsm_controller` | `clk`, `rst_n`, `key_pulse`, `key_hold` | `mode[2:0]`, `cursor_sel`, `op` | 界面切换、修改位选择与操作译码 |
-| `rtc_counter` | `clk`, `rst_n`, `flag_1s`, `load`, `set_data` | `time_bcd`, `date_bcd` | 时/分/秒与年/月/日计数（闰年、大小月） |
-| `alarm_clock` | `clk`, `rst_n`, `time_bcd`, `ack` | `alarm_on`, `alarm_no` | 3 组闹钟 + 5s/10s 二次提醒 FSM |
-| `countdown` | `clk`, `rst_n`, `start`, `pause`, `load` | `cnt_bcd`, `done` | 倒计时（启动 / 暂停 / 复位） |
+| `rtc_counter` | `clk`, `rst_n`, `flag_1s`, `set_en`, `field[2:0]`, `inc/dec` | `hour` / `minute` / `second`, `year[15:0]`, `month` / `day`（BCD） | 时/分/秒与年/月/日计数（闰年、大小月）；字段 0=时 1=分 2=年 3=月 4=日，年月调整自动收缩日 |
+| `alarm_clock` | `clk`, `rst_n`, `flag_1s`, `set_en`, `idx[1:0]`, `fld[1:0]`, `inc/dec`, `cur_hour` / `cur_min`, `ack` | `ring`, `ring_no[1:0]`, `en[2:0]`, `sel_hour` / `sel_min` | 3 组闹钟 + 5s/10s 二次提醒 FSM；字段 0=时 1=分 2=使能切换 |
+| `countdown` | `clk`, `rst_n`, `flag_1s`, `set_en`, `fld`, `inc/dec`, `run`, `reset` | `min` / `sec`, `done`, `running` | 倒计时（分 00~99 / 秒 00~59）：设定、开始/暂停、复位、结束重开 |
 | `alarm_led` | `clk`, `alarm_on`, `done` | `led_o` | LED 闪烁提醒输出 |
 | `seg_driver` | `clk`, `disp_data`, `mode` | `seg[7:0]`, `sel[5:0]` | 数码管动态扫描驱动 |
 
@@ -173,7 +173,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1** | 已完成 | 2026-09-01 | README 设计文档、模块接口表、目录结构 | 需求分析与 6 键复用方案评审通过 |
 | **Phase 2** | 已完成 | 2026-09-01 | `clk_div.v`、`key_debounce.v`、`tb_clk_div.v`、`tb_key_debounce.v` | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
-| **Phase 3** | 进行中 | - | `rtc_counter.v` / `alarm_clock.v` / `countdown.v` | 待完成 |
+| **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 4** | 未开始 | - | `fsm_controller.v` / `seg_driver.v` / `top_digital_clock.v` | 待完成 |
 | **Phase 5** | 未开始 | - | `top_digital_clock.xdc` | 待完成 |
 | **Phase 6** | 未开始 | - | `.bit` 固件 | 待完成 |
@@ -187,6 +187,16 @@
 * 为消除 xsim 的 `module has no timescale` 警告，已为 `clk_div.v`、`key_debounce.v` 补充 `` `timescale 1ns / 1ps ``。
 * 排障记录：`key_debounce.v` 曾意外被写坏为全零字节文件（5816B 全 0），已重建恢复；若再遇类似损坏，在 Vivado 中 Remove File 后重新 Add Files 即可。
 * 调试经验：TB 若在时钟边沿采样会与模块 NBA 更新产生读旧值竞争，应在上沿后 1/4 周期采样、负沿计数；实际时序参考——脉冲约在按键变化后 13~14 拍被计数，hold 约 40~41 拍拉高，采样等待需留足余量。
+
+**Phase 3 详细记录：**
+
+* `rtc_counter.v`：BCD 存储的 时/分/秒 与 年/月/日 计数。闰年由 BCD 位直接推导（无需除法，覆盖 2000/2100 世纪），月长 28/29/30/31 天组合判断；设置模式下字段 +1/-1（0=时 1=分 2=年 3=月 4=日），年月调整后自动收缩日（如 2/29->平年、31->30 天月）。初值可参数化（`INIT_YEAR` 等）。
+* `alarm_clock.v`：3 组闹钟（时/分 + 使能位）。仅在分钟跳变沿触发提醒，避免同分钟重复；状态机 IDLE->ALARM_1(5s, 可解除)->SNOOZE(10s)->ALARM_2(5s)->IDLE。字段调整：时/分/使能切换。
+* `countdown.v`：分:秒倒计时（分 00~99，秒 00~59 回绕）。支持设定初值、开始/暂停切换、复位、结束后按开始重新载入。减到 00:00 当拍置完成标志并停表。
+* 对应 TB 覆盖：时间/日期进位、闰年（2024/2000 闰、2100 非闰）、大小月、字段增减与日收缩回绕；闹钟响铃/解除/二次提醒全时序、同分钟不重复、关闭不响；倒计时递减/借位/暂停/结束/复位/重启。
+* 设计决策：全部 BCD 递增/递减用函数封装（`bcd2_inc/dec`、`bcd4_inc/dec`），寄存器统一非阻塞提交，杜绝竞态；TB 输入统一在时钟负沿改变、正沿采样，保证确定性。
+* **Vivado xsim 验证**：三个 TB 均加入工程并在 xsim 中运行通过；`tb_rtc_counter` 需 `run all`（含两段 86400s 快进，耗时约毫秒级仿真）后输出 `ALL TESTS PASSED`。
+* 排障记录：多场景共享时钟导致相互推进；`countdown` 退出设置模式时工作计数需在下降沿同步初值；到达 00:00 当拍置 done（初版滞后一拍）。
 
 ---
 
@@ -244,10 +254,12 @@ Clock/
 │   ├── constrs_1/new/             # 约束文件
 │   │   └── top_digital_clock.xdc  # 管脚约束（时钟 / 按键 / 数码管段选位选 / LED）
 │   └── sim_1/new/                 # 仿真 Testbench
-│       ├── tb_top_digital_clock.v # 顶层集成仿真
-│       ├── tb_rtc_counter.v       # 时钟/日期模块仿真
-│       ├── tb_alarm_clock.v       # 闹钟模块仿真
-│       └── tb_countdown.v         # 倒计时模块仿真
+│       ├── tb_clk_div.v           # 分频模块仿真（Phase 2）
+│       ├── tb_key_debounce.v      # 按键模块仿真（Phase 2）
+│       ├── tb_rtc_counter.v       # 时钟/日期模块仿真（Phase 3）
+│       ├── tb_alarm_clock.v       # 闹钟模块仿真（Phase 3）
+│       ├── tb_countdown.v         # 倒计时模块仿真（Phase 3）
+│       └── tb_top_digital_clock.v # 顶层集成仿真（待 Phase 4）
 ├── Clock.gen/                     # 生成文件（自动生成，勿手改）
 ├── Clock.runs/                    # 综合/实现/比特流运行目录（自动生成）
 │   ├── synth_1/                   # 综合运行（含综合报告）
@@ -333,3 +345,5 @@ Clock/
 | v0.2 | 2026-09-01 | 补全目录结构；细化工作流与验证标准；新增扩展功能建议、风险清单与修订记录 |
 | v0.3 | 2026-09-01 | 新增 3.4 工作进度记录；Phase 1/2 完成并记录产出与调试经验 |
 | v0.4 | 2026-09-01 | Phase 2 Vivado xsim 行为级仿真验证通过；补充 timescale 说明与文件损坏排障记录 |
+| v0.5 | 2026-09-01 | Phase 3 完成：`rtc_counter` / `alarm_clock` / `countdown` 及 TB 仿真全通过并记录设计决策与排障 |
+| v0.6 | 2026-09-01 | Phase 3 Vivado xsim 验证通过；接口表/目录树与实际代码对齐并修正误字 |
