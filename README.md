@@ -130,8 +130,9 @@
 | `alarm_clock` | `clk`, `rst_n`, `flag_1s`, `set_en`, `idx[1:0]`, `fld[1:0]`, `inc/dec`, `cur_hour` / `cur_min`, `ack` | `ring`, `ring_no[1:0]`, `en[2:0]`, `sel_hour` / `sel_min` | 3 组闹钟 + 5s/10s 二次提醒 FSM；字段 0=时 1=分 2=使能切换；解除键边沿即时响应 |
 | `countdown` | `clk`, `rst_n`, `flag_1s`, `set_en`, `fld`, `inc/dec`, `run`, `reset` | `min` / `sec`, `done`, `running` | 倒计时（分 00~99 / 秒 00~59）：设定、开始/暂停、复位、结束重开 |
 | `alarm_led` | `clk`, `rst_n`, `flag_1s`, `flag_2hz`, `alarm_ring`, `cnt_done` | `led` | 响铃 2Hz 闪烁 / 倒计时结束 5s 闪烁 |
-| `seg_driver` | `clk`, `rst_n`, `flag_500hz`, `digit[23:0]`, `dp[5:0]`, `blank[5:0]` | `seg[7:0]`, `sel[5:0]` | 六位动态扫描 + 7 段译码 + 小数点/熄灭 |
-| `top_digital_clock` | `clk`, `rst_n`, `key[5:0]` | `seg[7:0]`, `sel[5:0]`, `led` | 顶层集成：6 键译码、显示选通、光标闪烁 |
+| `seg_driver` | `clk`, `rst_n`, `flag_500hz`, `digit[31:0]`, `dp[7:0]`, `blank[7:0]` | `seg[7:0]`, `sel[7:0]` | 八位动态扫描 + 7 段译码 + 小数点/熄灭（极性参数化） |
+| `top_digital_clock` | `clk`, `rst_n`, `key[5:0]` | `seg[7:0]`, `sel[7:0]`, `led` | 顶层集成：6 键译码、八位显示选通、光标闪烁 |
+| `top_digital_clock_board` | `sys_clk`, `btn[3:0]`, `sw1`, `sw2` | `seg[7:0]`, `sel[7:0]`, `led` | 板上封装：上电复位 + 引脚分组映射（供 XDC） |
 
 ---
 
@@ -176,7 +177,7 @@
 | **Phase 2** | 已完成 | 2026-09-01 | `clk_div.v`、`key_debounce.v`、`tb_clk_div.v`、`tb_key_debounce.v` | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
-| **Phase 5** | 未开始 | - | `top_digital_clock.xdc` | 待完成 |
+| **Phase 5** | 已完成 | 2026-09-04 | `top_digital_clock.xdc`、板上封装 `top_digital_clock_board.v`、8 位数码管适配 | Vivado 综合成功、0 错误 0 严重告警、时序全满足（WNS=14.2ns） |
 | **Phase 6** | 未开始 | - | `.bit` 固件 | 待完成 |
 
 **Phase 2 详细记录：**
@@ -210,6 +211,14 @@
 * 关键决策：闹钟解除由"仅秒节拍内响应"改为**边沿即时解除**，按键响应不再受 1s 节拍限制。
 * 排障记录：task 形参传条件表达式只在调用时求值一次，导致等待条件永不成立——改用流程内联实时采样；alarm 响铃的解除需落在秒节拍（改即时解除后不再受限）。
 * 已知简化（后续可优化）：日期设置界面通过年低 2 位调整整年；闹钟使能用小数点指示、无独立"开/关"标签；段码/位选极性等上板参数在 Phase 5 按板适配。
+
+**Phase 5 详细记录：**
+
+* 依据 HX7A75A 手册引脚表完成约束 `top_digital_clock.xdc`：时钟 Y18@50MHz；4 按键 E3/G4/P19/R19（低有效）；2 开关 N14/P16（低触发）作 KEY4/KEY5；共阳段码 AB18/U17/U18/P14/R14/R18/T18/N17（低点亮）；位选 SEL0~SEL7 高有效（sel[i] 对应右起第 i 位）；LED AA6 高点亮。
+* 板上封装 `top_digital_clock_board.v`：片上电复位（~84ms），4 按键+2 开关拼成 i_key[5:0]。
+* 显示升级为 **8 位**：`seg_driver` 支持 8 位与段码极性参数；日期界面可完整显示 `YYYY-MM-DD`，闹钟界面首位显示闹钟编号。
+* 综合结果：xc7a75tfgg484-2，0 错误 0 严重告警，资源 664 LUT / 430 FF（占用极小），时序全满足（Setup WNS=14.245ns, Hold WNS=0.120ns）。
+* 待办（Phase 6）：Implementation 与比特流生成、上板 ILA 调试与功能验收。
 
 ---
 
@@ -255,6 +264,7 @@ Clock/
 ├── README.md                      # 本项目设计文档（本文档）
 ├── Clock.srcs/                    # 设计源文件（人工维护，纳入版本管理）
 │   ├── sources_1/new/             # RTL 源码
+│   │   ├── top_digital_clock_board.v # 板上顶层封装（Phase 5，上电复位+引脚分组）
 │   │   ├── top_digital_clock.v    # 顶层模块（Phase 4，例化所有子模块）
 │   │   ├── clk_div.v              # 时钟分频（Phase 2）
 │   │   ├── key_debounce.v         # 按键消抖 + 短按脉冲 / 长按标志（Phase 2）
@@ -263,9 +273,9 @@ Clock/
 │   │   ├── alarm_clock.v          # 闹钟管理（Phase 3）
 │   │   ├── countdown.v            # 倒计时模块（Phase 3）
 │   │   ├── alarm_led.v            # LED 提醒闪烁（Phase 4）
-│   │   └── seg_driver.v           # 数码管动态扫描驱动（Phase 4）
+│   │   └── seg_driver.v           # 八位数码管动态扫描驱动（Phase 4/5）
 │   ├── constrs_1/new/             # 约束文件
-│   │   └── top_digital_clock.xdc  # 管脚约束（时钟 / 按键 / 数码管段选位选 / LED）（待 Phase 5）
+│   │   └── top_digital_clock.xdc  # HX7A75A 管脚约束（Phase 5）
 │   └── sim_1/new/                 # 仿真 Testbench
 │       ├── tb_clk_div.v           # 分频模块仿真（Phase 2）
 │       ├── tb_key_debounce.v      # 按键模块仿真（Phase 2）
@@ -362,3 +372,4 @@ Clock/
 | v0.6 | 2026-09-04 | Phase 3 Vivado xsim 验证通过；接口表/目录树与实际代码对齐并修正误字 |
 | v0.7 | 2026-09-04 | Phase 4 完成：`fsm_controller` / `seg_driver` / `alarm_led` / `top_digital_clock` 顶层集成仿真通过并记录决策与排障 |
 | v0.8 | 2026-09-04 | Phase 4 Vivado xsim 集成仿真验证通过 |
+| v0.9 | 2026-09-04 | Phase 5 完成：8 位显示适配、HX7A75A XDC、板上封装、综合时序收敛 |

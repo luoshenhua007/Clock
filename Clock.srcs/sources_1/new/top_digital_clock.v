@@ -15,7 +15,7 @@ module top_digital_clock #(
     input  wire       i_rst_n,
     input  wire [5:0] i_key,         // 物理按键（低有效）
     output wire [7:0] o_seg,
-    output wire [5:0] o_sel,
+    output wire [7:0] o_sel,
     output wire       o_led
 );
 
@@ -106,56 +106,63 @@ module top_digital_clock #(
         .i_clk(i_clk), .i_rst_n(i_rst_n), .i_flag_1s(flag_1s), .i_flag_2hz(flag_2hz),
         .i_alarm_ring(ring), .i_cnt_done(cnt_done), .o_led(o_led));
 
-    // ---- 显示内容选通 ----
-    reg [23:0] digit_d;
-    reg [5:0]  blank_d;
-    reg [5:0]  dp_d;
+    // ---- 显示内容选通（8 位，nibble7=SEL0 最左）----
+    reg [31:0] digit_d;
+    reg [7:0]  blank_d;
+    reg [7:0]  dp_d;
+    reg [7:0]  blink_b;
 
-    wire [23:0] time_d = {hour, min, sec};
-    wire [23:0] date_d = {year[7:4], year[3:0], mon, day};
-    wire [23:0] alm_d  = {alm_h, alm_m, 8'h00};
-    wire [23:0] cnt_d  = {cnt_min, cnt_sec, 8'h00};
+    // 各模式 8 位布局：nibble 7..0 = SEL0..SEL7
+    //   TIME/SET_T: HH MM SS 于 SEL0..5（SEL6/7 熄灭）
+    //   DATE/SET_D: YYYY MM DD 占满 8 位
+    //   ALM:        编号 SEL0 | 空 SEL1 | 时 SEL2..3 | 分 SEL4..5
+    //   CNT:        空 SEL0..1 | 分 SEL2..3 | 秒 SEL4..5
+    wire [31:0] time_d = {hour, min, sec, 8'h00};
+    wire [31:0] date_d = {year, mon, day};
+    wire [31:0] alm_d  = {4'd1 + {2'b00, alm_idx}, 4'h0, alm_h, alm_m, 8'h00};
+    wire [31:0] cnt_d  = {8'h00, cnt_min, cnt_sec, 8'h00};
 
-    // 各模式实际显示所需的位选光带（熄灭末两位或闪烁位）
-    reg [5:0] blink_b;
+    reg [7:0]  base_blank;
     always @(*) begin
-        digit_d = 24'h0;
-        blank_d = 6'h00;
-        dp_d    = 6'h00;
-        blink_b = 6'h00;
+        digit_d = 32'h0;
+        blank_d = 8'h00;
+        dp_d    = 8'h00;
+        blink_b = 8'h00;
         case (mode)
             M_TIME, M_SET_T: begin
                 digit_d = time_d;
-                dp_d    = 6'b010100;      // 时:分 与 分:秒 之间的分隔点
+                blank_d = 8'b1100_0000;      // 熄灭 SEL6/7
+                dp_d    = 8'b0001_0100;      // 时:分、分:秒 分隔点（SEL2/SEL4）
                 if (mode == M_SET_T) begin
-                    if (cursor == 4'd0) blink_b = 6'b110000; // 时
-                    else               blink_b = 6'b001100; // 分
+                    if (cursor == 4'd0) blink_b = 8'b0000_0011; // 时 SEL0..1
+                    else               blink_b = 8'b0000_1100; // 分 SEL2..3
                 end
             end
             M_DATE, M_SET_D: begin
                 digit_d = date_d;
                 if (mode == M_SET_D) begin
-                    if (cursor == 4'd0) blink_b = 6'b110000; // 年
-                    else if (cursor == 4'd1) blink_b = 6'b001100; // 月
-                    else blink_b = 6'b000011;              // 日
+                    if (cursor == 4'd0) blink_b = 8'b0000_1111;      // 年 SEL0..3
+                    else if (cursor == 4'd1) blink_b = 8'b0011_0000; // 月 SEL4..5
+                    else blink_b = 8'b1100_0000;                     // 日 SEL6..7
                 end
             end
             M_ALM: begin
                 digit_d = alm_d;
-                blank_d = 6'b000011;         // 只显示选中的时/分四位数
-                if (alm_en[alm_idx]) dp_d = 6'b000100;   // 使能指示点（分钟十位）
+                blank_d = 8'b1010_0010;      // 熄灭 SEL1、SEL6、SEL7
+                if (alm_en[alm_idx]) dp_d = 8'b0000_1000;  // 使能点（SEL3）
                 case (alm_cmod_c)
-                    2'd0: blink_b = 6'b110000;           // 时
-                    2'd1: blink_b = 6'b001100;           // 分
-                    default: blink_b = 6'b111100;        // 使能编辑
+                    2'd0: blink_b = 8'b0000_1100;          // 时 SEL2..3
+                    2'd1: blink_b = 8'b0011_0000;          // 分 SEL4..5
+                    default: blink_b = 8'b0011_1100;       // 使能编辑
                 endcase
             end
             M_CNT: begin
                 digit_d = cnt_d;
-                blank_d = 6'b000011;
+                blank_d = 8'b1100_0011;      // 熄灭 SEL0/1/6/7
+                dp_d    = 8'b0001_0000;      // 分:秒 分隔点（SEL4）
                 if (cnt_cfg) begin
-                    if (cursor == 4'd0) blink_b = 6'b110000; // 分
-                    else               blink_b = 6'b001100; // 秒
+                    if (cursor == 4'd0) blink_b = 8'b0000_1100; // 分 SEL2..3
+                    else               blink_b = 8'b0011_0000; // 秒 SEL4..5
                 end
             end
             default: ;
@@ -163,13 +170,13 @@ module top_digital_clock #(
     end
 
     // 闪烁节拍低时熄灭光标区（有效设置状态下）
-    wire [5:0] blink_off = (flag_2hz) ? 6'h00 : blink_b;
+    wire [7:0] blink_off = (flag_2hz) ? 8'h00 : blink_b;
 
-    wire [23:0] disp_digit = digit_d;
-    wire [5:0]  disp_blank = blank_d | blink_off;
-    wire [5:0]  disp_dp    = dp_d;
+    wire [31:0] disp_digit = digit_d;
+    wire [7:0]  disp_blank = blank_d | blink_off;
+    wire [7:0]  disp_dp    = dp_d;
 
-    seg_driver u_seg (
+    seg_driver #(.SEG_ACTIVE_LOW(1)) u_seg (   // 共阳：段码低点亮
         .i_clk(i_clk), .i_rst_n(i_rst_n), .i_flag_500hz(flag_500hz),
         .i_digit(disp_digit), .i_dp(disp_dp), .i_blank(disp_blank),
         .o_seg(o_seg), .o_sel(o_sel));

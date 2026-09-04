@@ -16,7 +16,7 @@ module tb_top_digital_clock;
     reg rst_n = 0;
     reg [5:0] key = 6'b111111;
     wire [7:0] seg;
-    wire [5:0] sel;
+    wire [7:0] sel;
     wire led;
 
     top_digital_clock #(
@@ -86,11 +86,15 @@ module tb_top_digital_clock;
         // ===== A: 时间模式默认 00:00，MODE 循环到日期模式 =====
         chk("A1", u_dut.mode == 3'd0, "default mode TIME");
         chk("A2", u_dut.hour == 8'h00 && u_dut.min == 8'h00, "rtc starts 00:00");
+        chk("A3", u_dut.digit_d == {u_dut.hour, u_dut.min, u_dut.sec, 8'h00},
+            "TIME display HHMMSS layout");
 
         tap(0);                        // TIME -> DATE
         chk("B1", u_dut.mode == 3'd1, "MODE to DATE");
         chk("B2", u_dut.mon == 8'h01 && u_dut.day == 8'h01 && u_dut.year == 16'h2026,
             "default date 2026-01-01");
+        chk("B3", u_dut.digit_d == {u_dut.year, u_dut.mon, u_dut.day},
+            "DATE display YYYYMMDD");
 
         // ===== C: 时间设置（SET_T）：时 +1/-1 =====
         tap(0);                        // DATE -> SET_T

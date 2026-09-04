@@ -1,20 +1,22 @@
 `timescale 1ns / 1ps
 
-// seg_driver：六位数码管动态扫描。每来一个 500Hz 使能脉冲切换一位，
-// 段码/位选同时输出；支持逐位小数点和整位熄灭（闪烁/空白）。
+// seg_driver：八位数码管动态扫描。每来一个 500Hz 使能脉冲切换一位。
+// 段码位序 bit0=a .. bit6=g, bit7=dp（内部"亮=1"），可整体取反（共阳极板）。
+// 位选/段码极性通过参数适配硬件。blank=1 熄灭该位（含 dp）。
 
-module seg_driver (
+module seg_driver #(
+    parameter SEL_ACTIVE_LOW = 0,   // 1 = 位选低有效
+    parameter SEG_ACTIVE_LOW = 0    // 1 = 共阳极，段码低电平点亮（取反输出）
+)(
     input  wire        i_clk,
     input  wire        i_rst_n,
-    input  wire        i_flag_500hz,  // 扫描节拍
-    input  wire [23:0] i_digit,       // 6 位 BCD（位序：下标 5..0 = 显示左→右）
-    input  wire [5:0]  i_dp,          // 各位小数点（1=亮）
-    input  wire [5:0]  i_blank,       // 各位熄灭（1=灭）
-    output reg  [7:0]  o_seg,         // {dp,g,f,e,d,c,b,a}，亮为 1
-    output reg  [5:0]  o_sel          // 位选，1 有效（可参数化取反）
+    input  wire        i_flag_500hz,
+    input  wire [31:0] i_digit,      // 8 位 BCD，nibble7=位0（最左）
+    input  wire [7:0]  i_dp,         // bit n = 位 n 的小数点
+    input  wire [7:0]  i_blank,      // bit n = 熄灭位 n
+    output reg  [7:0]  o_seg,
+    output reg  [7:0]  o_sel
 );
-
-    parameter SEL_ACTIVE_LOW = 0;     // 1 = 位选低有效
 
     reg [2:0] pos_r;
 
@@ -22,13 +24,12 @@ module seg_driver (
         if (!i_rst_n)
             pos_r <= 3'd0;
         else if (i_flag_500hz)
-            pos_r <= (pos_r == 3'd5) ? 3'd0 : pos_r + 3'd1;
+            pos_r <= (pos_r == 3'd7) ? 3'd0 : pos_r + 3'd1;
     end
 
     wire [3:0] dig_w = i_digit[pos_r*4 +: 4];
 
-    // 共阴 7 段（亮为 1）：seg {dp,g,f,e,d,c,b,a}
-    reg [7:0] code_r;
+    reg [7:0] code_r;               // 内部亮=1：{dp=0,g..a}
     always @(*) begin
         case (dig_w)
             4'h0: code_r = 8'h3F; 4'h1: code_r = 8'h06;
@@ -44,9 +45,11 @@ module seg_driver (
     end
 
     always @(*) begin
-        o_sel = SEL_ACTIVE_LOW ? ~(6'd1 << pos_r) : (6'd1 << pos_r);
+        o_sel = SEL_ACTIVE_LOW ? ~(8'd1 << pos_r) : (8'd1 << pos_r);
         if (i_blank[pos_r])
-            o_seg = 8'h00;
+            o_seg = SEG_ACTIVE_LOW ? 8'hFF : 8'h00;
+        else if (SEG_ACTIVE_LOW)
+            o_seg = ~(code_r | (i_dp[pos_r] ? 8'h80 : 8'h00));
         else
             o_seg = code_r | (i_dp[pos_r] ? 8'h80 : 8'h00);
     end
