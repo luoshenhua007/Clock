@@ -175,7 +175,7 @@
 | **Phase 1** | 已完成 | 2026-09-01 | README 设计文档、模块接口表、目录结构 | 需求分析与 6 键复用方案评审通过 |
 | **Phase 2** | 已完成 | 2026-09-01 | `clk_div.v`、`key_debounce.v`、`tb_clk_div.v`、`tb_key_debounce.v` | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
-| **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xvlog 编译全部通过 |
+| **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 5** | 未开始 | - | `top_digital_clock.xdc` | 待完成 |
 | **Phase 6** | 未开始 | - | `.bit` 固件 | 待完成 |
 
@@ -206,6 +206,7 @@
 * `alarm_led.v`：闹钟响铃期间按 2Hz 闪烁（时长由闹钟状态机决定）；倒计时 done 上升沿启动内部 5s 闪烁。
 * `top_digital_clock.v`：顶层集成，参数（CLK_FREQ / 消抖 / 长按）可配以便仿真。完成 6 键到各子模块的操作译码、按模式的六位显示选通与光标闪烁。
 * `tb_top_digital_clock.v` 集成仿真覆盖：MODE 循环切换、时间/日期字段增减、闹钟设为 00:00 并到点响铃/解除、倒计时设定->运行->完成->复位。
+* **Vivado xsim 验证**：`tb_top_digital_clock` 已加入工程并运行通过；需 `run all`（含约 60s 快进等待闹钟，仿真耗时至约 0.7ms）后输出 `ALL TESTS PASSED`。
 * 关键决策：闹钟解除由"仅秒节拍内响应"改为**边沿即时解除**，按键响应不再受 1s 节拍限制。
 * 排障记录：task 形参传条件表达式只在调用时求值一次，导致等待条件永不成立——改用流程内联实时采样；alarm 响铃的解除需落在秒节拍（改即时解除后不再受限）。
 * 已知简化（后续可优化）：日期设置界面通过年低 2 位调整整年；闹钟使能用小数点指示、无独立"开/关"标签；段码/位选极性等上板参数在 Phase 5 按板适配。
@@ -360,3 +361,4 @@ Clock/
 | v0.5 | 2026-09-04 | Phase 3 完成：`rtc_counter` / `alarm_clock` / `countdown` 及 TB 仿真全通过并记录设计决策与排障 |
 | v0.6 | 2026-09-04 | Phase 3 Vivado xsim 验证通过；接口表/目录树与实际代码对齐并修正误字 |
 | v0.7 | 2026-09-04 | Phase 4 完成：`fsm_controller` / `seg_driver` / `alarm_led` / `top_digital_clock` 顶层集成仿真通过并记录决策与排障 |
+| v0.8 | 2026-09-04 | Phase 4 Vivado xsim 集成仿真验证通过 |
