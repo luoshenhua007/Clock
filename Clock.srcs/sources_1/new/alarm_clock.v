@@ -42,6 +42,7 @@ module alarm_clock #(
     reg [3:0] cnt_r;
     reg [15:0] prev_hm_r;
     reg [1:0] state_r;
+    reg       ack_d1_r;   // i_ack 打拍，检测上升沿
 
     function automatic [7:0] bcd2_inc(input [3:0] hi, input [3:0] lo);
         begin bcd2_inc = (lo == 4'h9) ? {hi + 4'h1, 4'h0} : {hi, lo + 4'h1}; end
@@ -64,55 +65,65 @@ module alarm_clock #(
             state_r  <= S_IDLE;
             cnt_r    <= 4'd0;
             prev_hm_r<= 16'hffff;
+            ack_d1_r <= 1'b0;
             o_ring   <= 1'b0;
             o_ring_no<= 2'd0;
             o_state  <= S_IDLE;
-        end else if (i_set_en) begin
-            state_r  <= S_IDLE;
-            cnt_r    <= 4'd0;
-            o_ring   <= 1'b0;
-            o_state  <= S_IDLE;
-        end else if (i_flag_1s) begin
-            // 记录上一秒的时:分，用于分钟跳变沿检测
-            prev_hm_r <= cur_hm_w;
+        end else begin
+            ack_d1_r <= i_ack;
 
-            case (state_r)
-                S_IDLE: begin
-                    if (min_tick_w && any_match_w) begin
-                        state_r   <= S_ALARM1;
-                        o_ring    <= 1'b1;
-                        o_ring_no <= first_no_w;
-                        o_state   <= S_ALARM1;
-                        cnt_r     <= 4'd0;
-                    end
+            if (i_set_en) begin
+                state_r  <= S_IDLE;
+                cnt_r    <= 4'd0;
+                o_ring   <= 1'b0;
+                o_state  <= S_IDLE;
+            end else begin
+                // 解除键：边沿即时解除（不必等到秒节拍）
+                if (i_ack && !ack_d1_r &&
+                    (state_r == S_ALARM1 || state_r == S_ALARM2)) begin
+                    state_r <= S_IDLE;
+                    o_ring  <= 1'b0;
+                    o_state <= S_IDLE;
+                    cnt_r   <= 4'd0;
+                end else if (i_flag_1s) begin
+                    // 记录上一秒的时:分，用于分钟跳变沿检测
+                    prev_hm_r <= cur_hm_w;
+
+                    case (state_r)
+                        S_IDLE: begin
+                            if (min_tick_w && any_match_w) begin
+                                state_r   <= S_ALARM1;
+                                o_ring    <= 1'b1;
+                                o_ring_no <= first_no_w;
+                                o_state   <= S_ALARM1;
+                                cnt_r     <= 4'd0;
+                            end
+                        end
+                        S_ALARM1: begin
+                            if (cnt_r >= RING_CNT - 1) begin
+                                state_r <= S_SNOOZE; o_ring <= 1'b0; o_state <= S_SNOOZE; cnt_r <= 0;
+                            end else begin
+                                cnt_r <= cnt_r + 1'b1;
+                            end
+                        end
+                        S_SNOOZE: begin
+                            if (cnt_r >= SNOOZE_CNT - 1) begin
+                                state_r <= S_ALARM2; o_ring <= 1'b1; o_state <= S_ALARM2; cnt_r <= 0;
+                            end else begin
+                                cnt_r <= cnt_r + 1'b1;
+                            end
+                        end
+                        S_ALARM2: begin
+                            if (cnt_r >= RING_CNT - 1) begin
+                                state_r <= S_IDLE; o_ring <= 1'b0; o_state <= S_IDLE; cnt_r <= 0;
+                            end else begin
+                                cnt_r <= cnt_r + 1'b1;
+                            end
+                        end
+                        default: state_r <= S_IDLE;
+                    endcase
                 end
-                S_ALARM1: begin
-                    if (i_ack) begin
-                        state_r <= S_IDLE; o_ring <= 1'b0; o_state <= S_IDLE; cnt_r <= 0;
-                    end else if (cnt_r >= RING_CNT - 1) begin
-                        state_r <= S_SNOOZE; o_ring <= 1'b0; o_state <= S_SNOOZE; cnt_r <= 0;
-                    end else begin
-                        cnt_r <= cnt_r + 1'b1;
-                    end
-                end
-                S_SNOOZE: begin
-                    if (cnt_r >= SNOOZE_CNT - 1) begin
-                        state_r <= S_ALARM2; o_ring <= 1'b1; o_state <= S_ALARM2; cnt_r <= 0;
-                    end else begin
-                        cnt_r <= cnt_r + 1'b1;
-                    end
-                end
-                S_ALARM2: begin
-                    if (i_ack) begin
-                        state_r <= S_IDLE; o_ring <= 1'b0; o_state <= S_IDLE; cnt_r <= 0;
-                    end else if (cnt_r >= RING_CNT - 1) begin
-                        state_r <= S_IDLE; o_ring <= 1'b0; o_state <= S_IDLE; cnt_r <= 0;
-                    end else begin
-                        cnt_r <= cnt_r + 1'b1;
-                    end
-                end
-                default: state_r <= S_IDLE;
-            endcase
+            end
         end
     end
 
