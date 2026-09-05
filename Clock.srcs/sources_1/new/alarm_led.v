@@ -19,6 +19,17 @@ module alarm_led (
     reg       cnt5_r;          // 倒计时结束 5s 闪烁使能
     reg [2:0] cnt_r;
 
+    // 2Hz 方波：每来一个 flag_2hz 脉冲翻转一次（约 1Hz 亮/灭）
+    reg blk_ph;
+    wire blk_out;
+    always @(posedge i_clk or negedge i_rst_n) begin
+        if (!i_rst_n)
+            blk_ph <= 1'b0;
+        else if (i_flag_2hz)
+            blk_ph <= ~blk_ph;
+    end
+    assign blk_out = blk_ph;
+
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
             done_d1_r <= 1'b0;
@@ -40,7 +51,7 @@ module alarm_led (
                     cnt_r <= cnt_r + 3'd1;
                 end
             end
-            o_led <= (i_alarm_ring || cnt5_r) ? i_flag_2hz : 1'b0;
+            o_led <= (i_alarm_ring || cnt5_r) ? blk_out : 1'b0;
         end
     end
 

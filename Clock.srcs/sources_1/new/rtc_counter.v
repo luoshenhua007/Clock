@@ -1,8 +1,9 @@
 `timescale 1ns / 1ps
 
-// rtc_counter：实时时钟/日期。按 1Hz 使能脉冲走时；设置模式下可对指定字段 +1/-1。
+// rtc_counter：实时时钟/日期。按 1Hz 使能脉冲走时；字段可 +1/-1 编辑。
+// i_set_en：时间编辑（暂停走时，调整 时/分/秒）；i_date_edit：日期编辑（不暂停走时）。
 // 日期支持闰年与大小月自动进位。时间/日期均以 BCD 存储。
-// 调整字段编码：0=时 1=分 2=年 3=月 4=日。
+// 字段编码：0=时 1=分 5=秒 2=年 3=月 4=日。
 // 所有状态寄存器用非阻塞赋值提交；字段递增/递减用函数完成。
 
 module rtc_counter #(
@@ -16,8 +17,9 @@ module rtc_counter #(
     input  wire         i_clk,
     input  wire         i_rst_n,
     input  wire         i_flag_1s,   // 秒使能（非时钟脚）
-    input  wire         i_set_en,    // 设置模式：暂停走时，允许字段调整
-    input  wire [2:0]   i_field,     // 0=时 1=分 2=年 3=月 4=日
+    input  wire         i_set_en,    // 时间编辑：暂停走时，允许调整 时/分/秒
+    input  wire         i_date_edit, // 日期编辑：不暂停走时，允许调整 年/月/日
+    input  wire [2:0]   i_field,     // 0=时 1=分 5=秒 2=年 3=月 4=日
     input  wire         i_inc,       // 字段 +1（单拍）
     input  wire         i_dec,       // 字段 -1（单拍）
     output wire [7:0]   o_hour,      // BCD 时分秒
@@ -168,26 +170,30 @@ module rtc_counter #(
             {mo_t_n, mo_u_n} = {mo_t_r, mo_u_r};
             {d_t_n, d_u_n} = {d_t_r, d_u_r};
 
-            if (i_set_en) begin
-                // ===== 设置模式：字段调整（每拍至多一个操作）=====
+            // ===== 字段调整（时间编辑 i_set_en 或日期编辑 i_date_edit）=====
+            if ((i_set_en || i_date_edit) && (i_inc || i_dec)) begin
                 if (i_inc) begin
                     case (i_field)
                         3'd0: {h_t_n, h_u_n} = (hour_bcd == 8'h23) ? 8'h00
                                                                     : bcd2_inc(h_t_r, h_u_r);
                         3'd1: {m_t_n, m_u_n} = (min_bcd == 8'h59) ? 8'h00
                                                                     : bcd2_inc(m_t_r, m_u_r);
+                        3'd5: {s_t_n, s_u_n} = (sec_bcd == 8'h59) ? 8'h00
+                                                                    : bcd2_inc(s_t_r, s_u_r);
                         3'd2: {y3_n, y2_n, y1_n, y0_n} = bcd4_inc({y3_r, y2_r, y1_r, y0_r});
                         3'd3: {mo_t_n, mo_u_n} = month_inc(mo_t_r, mo_u_r);
                         3'd4: {d_t_n, d_u_n} = (day_bcd == max_d_w) ? 8'h01
                                                                       : bcd2_inc(d_t_r, d_u_r);
                         default: ;
                     endcase
-                end else if (i_dec) begin
+                end else begin
                     case (i_field)
                         3'd0: {h_t_n, h_u_n} = (hour_bcd == 8'h00) ? 8'h23
                                                                     : bcd2_dec(h_t_r, h_u_r);
                         3'd1: {m_t_n, m_u_n} = (min_bcd == 8'h00) ? 8'h59
                                                                     : bcd2_dec(m_t_r, m_u_r);
+                        3'd5: {s_t_n, s_u_n} = (sec_bcd == 8'h00) ? 8'h59
+                                                                    : bcd2_dec(s_t_r, s_u_r);
                         3'd2: {y3_n, y2_n, y1_n, y0_n} = bcd4_dec({y3_r, y2_r, y1_r, y0_r});
                         3'd3: {mo_t_n, mo_u_n} = month_dec(mo_t_r, mo_u_r);
                         3'd4: {d_t_n, d_u_n} = (day_bcd == 8'h01) ? max_d_w
@@ -197,15 +203,17 @@ module rtc_counter #(
                 end
 
                 // 年月调整后，日超出新月份天数时收缩（如 2/29->平年、31->30 天月）
-                if (i_inc || i_dec) begin : clamp_day
+                begin : clamp_day
                     reg [7:0] dm;
                     dm = max_day(mo_t_n, mo_u_n,
                                  is_leap(y3_n, y2_n, y1_n, y0_n));
                     if ({d_t_n, d_u_n} > dm)
                         {d_t_n, d_u_n} = dm;
                 end
-            end else if (i_flag_1s) begin
-                // ===== 正常走时 =====
+            end
+
+            // ===== 正常走时：仅在时间编辑暂停；日期显示/编辑不影响走时 =====
+            if (i_flag_1s && !i_set_en) begin
                 if (sec_bcd == 8'h59) begin
                     {s_t_n, s_u_n} = 8'h00;
                     if (min_bcd == 8'h59) begin

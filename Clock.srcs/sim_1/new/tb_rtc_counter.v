@@ -29,37 +29,37 @@ module tb_rtc_counter;
 
     rtc_counter #(.INIT_HOUR(8'h23), .INIT_MIN(8'h59), .INIT_SEC(8'h58),
                   .INIT_DAY(8'h31), .INIT_MON(8'h01), .INIT_YEAR(16'h2026))
-        u_midnight (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_mid), .i_set_en(set_en),
+        u_midnight (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_mid), .i_set_en(set_en), .i_date_edit(1'b0),
                     .i_field(field), .i_inc(inc), .i_dec(dec),
                     .o_hour(h_mid), .o_minute(mn_mid), .o_second(se_mid),
                     .o_year(yr_mid), .o_month(mo_mid), .o_day(da_mid));
     rtc_counter #(.INIT_HOUR(8'h23), .INIT_MIN(8'h59), .INIT_SEC(8'h58),
                   .INIT_DAY(8'h28), .INIT_MON(8'h02), .INIT_YEAR(16'h2026))
-        u_feb26 (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_feb), .i_set_en(set_en),
+        u_feb26 (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_feb), .i_set_en(set_en), .i_date_edit(1'b0),
                  .i_field(field), .i_inc(inc), .i_dec(dec),
                  .o_hour(h_fb), .o_minute(mn_fb), .o_second(se_fb),
                  .o_year(yr_fb), .o_month(mo_fb), .o_day(da_fb));
     rtc_counter #(.INIT_HOUR(8'h23), .INIT_MIN(8'h59), .INIT_SEC(8'h58),
                   .INIT_DAY(8'h28), .INIT_MON(8'h02), .INIT_YEAR(16'h2024))
-        u_leap24 (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_lp), .i_set_en(set_en),
+        u_leap24 (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_lp), .i_set_en(set_en), .i_date_edit(1'b0),
                   .i_field(field), .i_inc(inc), .i_dec(dec),
                   .o_hour(h_lp), .o_minute(mn_lp), .o_second(se_lp),
                   .o_year(yr_lp), .o_month(mo_lp), .o_day(da_lp));
     rtc_counter #(.INIT_HOUR(8'h23), .INIT_MIN(8'h59), .INIT_SEC(8'h58),
                   .INIT_DAY(8'h28), .INIT_MON(8'h02), .INIT_YEAR(16'h2000))
-        u_leap00 (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_l0), .i_set_en(set_en),
+        u_leap00 (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_l0), .i_set_en(set_en), .i_date_edit(1'b0),
                   .i_field(field), .i_inc(inc), .i_dec(dec),
                   .o_hour(h_l0), .o_minute(mn_l0), .o_second(se_l0),
                   .o_year(yr_l0), .o_month(mo_l0), .o_day(da_l0));
     rtc_counter #(.INIT_HOUR(8'h23), .INIT_MIN(8'h59), .INIT_SEC(8'h58),
                   .INIT_DAY(8'h28), .INIT_MON(8'h02), .INIT_YEAR(16'h2100))
-        u_century (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_cn), .i_set_en(set_en),
+        u_century (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_cn), .i_set_en(set_en), .i_date_edit(1'b0),
                    .i_field(field), .i_inc(inc), .i_dec(dec),
                    .o_hour(h_cn), .o_minute(mn_cn), .o_second(se_cn),
                    .o_year(yr_cn), .o_month(mo_cn), .o_day(da_cn));
     rtc_counter #(.INIT_HOUR(8'h12), .INIT_MIN(8'h34), .INIT_SEC(8'h56),
                   .INIT_DAY(8'h31), .INIT_MON(8'h03), .INIT_YEAR(16'h2026))
-        u_adj (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_adj), .i_set_en(set_en),
+        u_adj (.i_clk(clk), .i_rst_n(rst_n), .i_flag_1s(f_adj), .i_set_en(set_en), .i_date_edit(1'b0),
                .i_field(field), .i_inc(inc), .i_dec(dec),
                .o_hour(h_aj), .o_minute(mn_aj), .o_second(se_aj),
                .o_year(yr_aj), .o_month(mo_aj), .o_day(da_aj));

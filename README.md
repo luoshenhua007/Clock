@@ -88,20 +88,22 @@
         +-----------------------------------+
 ```
 
-### 2.1 按键分配规划 (6-Key Mapping)
+### 2.1 按键分配规划 (Key Mapping)
 
-系统约束为 6 个按键（`KEY0` ~ `KEY5`），为实现丰富功能，按键在不同模式下进行复用：
+系统输入共 6 个（4 按键 + 2 开关预留）。交互采用**两页 + 就地编辑**：
+KEY0 只在【时间显示】↔【日期显示】间切换；在显示页按 KEY1 进入该页编辑并按 KEY1 推进字段，避免因"路过"设置页而暂停走时。
 
 | 按键 | 名称 | 功能说明 |
 | :--- | :--- | :--- |
-| **KEY0** | **MODE** | 主模式切换键。按压在【时间显示】->【日期显示】->【时间设置】->【日期设置】->【闹钟设置】->【倒计时】循环切换。 |
-| **KEY1** | **SEL / EDIT** | 切换/选择修改位（如在设置模式下循环选择：时/分、年/月/日、闹钟1/2/3）。 |
-| **KEY2** | **UP / +** | 数值递增 (+1)，支持长按连加。 |
-| **KEY3** | **DOWN / -** | 数值递减 (-1)，支持长按连减。 |
-| **KEY4** | **START / PAUSE / ACK** | 在【倒计时界面】：启动 / 暂停 倒计时；在【闹钟响铃时】：作为**解除键**（ACK），立即停止提醒。 |
-| **KEY5** | **RESET / CLEAR** | 长按清零/复位倒计时，或在设置状态下重置参数为默认值。 |
+| **KEY0** | **MODE** | 在【时间显示】<->【日期显示】切换；若处于编辑则先退出编辑。 |
+| **KEY1** | **SEL / EDIT** | 显示页按一次进入该页编辑；编辑中按一次推进修改位：时间页 时->分->秒；日期页 年->月->日。 |
+| **KEY2** | **UP / +** | 当前字段递增 (+1)，支持长按连加。 |
+| **KEY3** | **DOWN / -** | 当前字段递减 (-1)，支持长按连减。 |
+| **KEY4** | **预留** | 暂未使用（拟作倒计时启动/闹钟解除）。 |
+| **KEY5** | **预留** | 暂未使用（拟作复位/清除）。 |
 
-> 建议 `key_debounce` 同时输出**单拍脉冲**（`key_pulse`，边沿触发一次）与**长按标志**（`key_hold`，按住超过阈值持续有效），以支持"短按切换 / 长按连加"的交互优化（详见 6.2 节）。
+> 设计要点：日期显示与编辑期间时钟**照常走时**（不暂停）；仅在编辑时间时暂停走秒，确保日常看/改日期不影响计时精度。
+> 闹钟、倒计时等扩展功能的界面交互待定，代码模块已按 README 2.2 预留。
 
 ### 2.2 核心算法与逻辑设计
 
@@ -125,8 +127,8 @@
 | :--- | :--- | :--- | :--- |
 | `clk_div` | `clk`, `rst_n` | `flag_1s`, `flag_500hz`, `flag_2hz` | 分频，产生周期使能脉冲（非时钟脚） |
 | `key_debounce` | `clk`, `rst_n`, `key_in[5:0]` | `key_pulse[5:0]`, `key_hold[5:0]` | 消抖 + 单拍脉冲 + 长按标志 |
-| `fsm_controller` | `clk`, `rst_n`, `key_pulse[5:0]` | `mode[2:0]`, `cursor[3:0]`, `cnt_cfg` | 模式循环与各界面光标推进（MODE/SEL） |
-| `rtc_counter` | `clk`, `rst_n`, `flag_1s`, `set_en`, `field[2:0]`, `inc/dec` | `hour` / `minute` / `second`, `year[15:0]`, `month` / `day`（BCD） | 时/分/秒与年/月/日计数（闰年、大小月）；字段 0=时 1=分 2=年 3=月 4=日，年月调整自动收缩日 |
+| `fsm_controller` | `clk`, `rst_n`, `key_pulse[5:0]` | `view`, `edit`, `cursor[1:0]` | 时间/日期两页切换 + 就地编辑子状态 |
+| `rtc_counter` | `clk`, `rst_n`, `flag_1s`, `set_en`, `date_edit`, `field[2:0]`, `inc/dec` | `hour` / `minute` / `second`, `year[15:0]`, `month` / `day`（BCD） | 时/分/秒与年/月/日计数（闰年、大小月）；`set_en`(时间编辑,暂停走时) 字段 0/1/5=时/分/秒；`date_edit`(日期编辑,不暂停) 字段 2/3/4=年/月/日 |
 | `alarm_clock` | `clk`, `rst_n`, `flag_1s`, `set_en`, `idx[1:0]`, `fld[1:0]`, `inc/dec`, `cur_hour` / `cur_min`, `ack` | `ring`, `ring_no[1:0]`, `en[2:0]`, `sel_hour` / `sel_min` | 3 组闹钟 + 5s/10s 二次提醒 FSM；字段 0=时 1=分 2=使能切换；解除键边沿即时响应 |
 | `countdown` | `clk`, `rst_n`, `flag_1s`, `set_en`, `fld`, `inc/dec`, `run`, `reset` | `min` / `sec`, `done`, `running` | 倒计时（分 00~99 / 秒 00~59）：设定、开始/暂停、复位、结束重开 |
 | `alarm_led` | `clk`, `rst_n`, `flag_1s`, `flag_2hz`, `alarm_ring`, `cnt_done` | `led` | 响铃 2Hz 闪烁 / 倒计时结束 5s 闪烁 |
@@ -178,7 +180,7 @@
 | **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 5** | 已完成 | 2026-09-04 | `top_digital_clock.xdc`、板上封装 `top_digital_clock_board.v`、8 位数码管适配 | Vivado 综合成功、0 错误 0 严重告警、时序全满足（WNS=14.2ns） |
-| **Phase 6** | 进行中 | 2026-09-05 | `.bit` 固件（`top_digital_clock_board.bit`） | 时间界面上板走秒/左右/冒号验证通过；其余模式验收中 |
+| **Phase 6** | 进行中 | 2026-09-05 | `.bit` 固件（`top_digital_clock_board.bit`） | 时间/日期两页+就地编辑新交互上板验收通过；闹钟/倒计时待定 |
 
 **Phase 2 详细记录：**
 
@@ -375,3 +377,4 @@ Clock/
 | v0.8 | 2026-09-04 | Phase 4 Vivado xsim 集成仿真验证通过 |
 | v0.9 | 2026-09-04 | Phase 5 完成：8 位显示适配、HX7A75A XDC、板上封装、综合时序收敛 |
 | v1.0 | 2026-09-05 | Phase 6 上板 bring-up：段码低点亮/位选低有效实测、位序与冒号修正、时间走秒验证通过；清理调试模块 |
+| v1.1 | 2026-09-05 | 交互重构：时间/日期两页+就地编辑，日期显示/编辑不暂停走时，增加秒可调；上板验收通过 |
