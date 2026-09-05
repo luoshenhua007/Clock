@@ -21,6 +21,7 @@ module top_digital_clock #(
 
     wire flag_1s, flag_500hz, flag_2hz;
     wire [5:0] key_pulse;
+    wire [5:0] key_hold;
 
     clk_div #(.CLK_FREQ(CLK_FREQ)) u_clk (
         .i_clk(i_clk), .i_rst_n(i_rst_n),
@@ -28,7 +29,7 @@ module top_digital_clock #(
 
     key_debounce #(.DEBOUNCE_CNT(DB_CNT), .HOLD_CNT(HOLD_CNT)) u_key (
         .i_clk(i_clk), .i_rst_n(i_rst_n), .i_key_in(i_key),
-        .o_key_pulse(key_pulse), .o_key_hold());
+        .o_key_pulse(key_pulse), .o_key_hold(key_hold));
 
     wire        view;                // 0=时间 1=日期
     wire        editing;
@@ -42,13 +43,30 @@ module top_digital_clock #(
     wire [15:0] year;
     wire [7:0] mon, day;
 
+    // 长按自动连加/连减（按住超过长按阈值后约 8Hz 重复）
+    localparam REP_TH = (CLK_FREQ >= 8) ? CLK_FREQ / 8 : 1;
+    reg [22:0] rep_cnt;
+    wire hold_any = editing && (key_hold[2] || key_hold[3]);
+    always @(posedge i_clk or negedge i_rst_n) begin
+        if (!i_rst_n)
+            rep_cnt <= 23'd0;
+        else if (hold_any) begin
+            if (rep_cnt >= REP_TH[22:0] - 23'd1)
+                rep_cnt <= 23'd0;
+            else
+                rep_cnt <= rep_cnt + 23'd1;
+        end else
+            rep_cnt <= 23'd0;
+    end
+    wire rep_tick = hold_any && (rep_cnt >= REP_TH[22:0] - 23'd1);
+
     wire rtc_set_en   =  editing && !view;   // 时间编辑（暂停走时）
     wire rtc_date_ed  =  editing &&  view;   // 日期编辑（不暂停）
     wire [2:0] rtc_field = (!view)
         ? ((cursor == 2'd0) ? 3'd0 : (cursor == 2'd1) ? 3'd1 : 3'd5)
         : ((cursor == 2'd0) ? 3'd2 : (cursor == 2'd1) ? 3'd3 : 3'd4);
-    wire rtc_inc = key_pulse[2] && editing;
-    wire rtc_dec = key_pulse[3] && editing;
+    wire rtc_inc = editing && (key_pulse[2] || (key_hold[2] && rep_tick));
+    wire rtc_dec = editing && (key_pulse[3] || (key_hold[3] && rep_tick));
 
     rtc_counter u_rtc (
         .i_clk(i_clk), .i_rst_n(i_rst_n), .i_flag_1s(flag_1s),
@@ -87,13 +105,14 @@ module top_digital_clock #(
         end
     end
 
-    // 闪烁相位（flag_2hz 脉冲翻转）
+    // 闪烁相位（flag_2hz 脉冲翻转）；长按连加期间保持常亮不闪
+    wire hold_active = editing && (key_hold[2] || key_hold[3]);
     reg blink_phase;
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n)      blink_phase <= 1'b0;
         else if (flag_2hz) blink_phase <= ~blink_phase;
     end
-    wire [7:0] blink_off = blink_phase ? 8'h00 : blink_b;
+    wire [7:0] blink_off = (hold_active || blink_phase) ? 8'h00 : blink_b;
     wire [7:0] eff_blank = blank_d | blink_off;
 
     // ---- 动态扫描（内联）----

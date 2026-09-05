@@ -23,6 +23,8 @@ module tb_top_digital_clock;
     always #(CLK_PERIOD/2) clk = ~clk;
     integer fails = 0;
     integer c;
+    integer c2;
+    integer pulses;
 
     task cyc(input integer n);
         integer k;
@@ -99,6 +101,17 @@ module tb_top_digital_clock;
             tap(2);
             chk("E7", u_dut.sec == exp, "sec inc (wrap ok)");
         end
+
+        // F: 长按 + 自动连加（编辑中秒字段）
+        pulses = 0;
+        @(negedge clk); key = key & ~(6'b1 << 2);
+        for (c2 = 0; c2 < 1800; c2 = c2 + 1) begin
+            @(posedge clk);
+            if (u_dut.rtc_inc) pulses = pulses + 1;
+        end
+        @(negedge clk); key = 6'b111111;
+        cyc(DB_CNT + 5);
+        chk("F1", pulses >= 4, "long-press auto repeat increments");
 
         if (fails == 0) $display("ALL TESTS PASSED");
         else $display("%0d TEST(S) FAILED", fails);

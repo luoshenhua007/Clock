@@ -180,7 +180,7 @@ KEY0 只在【时间显示】↔【日期显示】间切换；在显示页按 KE
 | **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 5** | 已完成 | 2026-09-04 | `top_digital_clock.xdc`、板上封装 `top_digital_clock_board.v`、8 位数码管适配 | Vivado 综合成功、0 错误 0 严重告警、时序全满足（WNS=14.2ns） |
-| **Phase 6** | 进行中 | 2026-09-05 | `.bit` 固件（`top_digital_clock_board.bit`） | 时间/日期两页+就地编辑新交互上板验收通过；闹钟/倒计时待定 |
+| **Phase 6** | 进行中 | 2026-09-05 | `.bit` 固件（`top_digital_clock_board.bit`） | 两页+就地编辑、长按连加/连减、长按不闪烁上板验收通过；闹钟/倒计时待定 |
 
 **Phase 2 详细记录：**
 
@@ -378,3 +378,4 @@ Clock/
 | v0.9 | 2026-09-04 | Phase 5 完成：8 位显示适配、HX7A75A XDC、板上封装、综合时序收敛 |
 | v1.0 | 2026-09-05 | Phase 6 上板 bring-up：段码低点亮/位选低有效实测、位序与冒号修正、时间走秒验证通过；清理调试模块 |
 | v1.1 | 2026-09-05 | 交互重构：时间/日期两页+就地编辑，日期显示/编辑不暂停走时，增加秒可调；上板验收通过 |
+| v1.2 | 2026-09-05 | 编辑支持长按自动连加/连减（~8Hz 重复），长按期间字段常亮不闪；上板验收通过 |
