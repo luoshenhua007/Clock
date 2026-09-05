@@ -178,7 +178,7 @@
 | **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 5** | 已完成 | 2026-09-04 | `top_digital_clock.xdc`、板上封装 `top_digital_clock_board.v`、8 位数码管适配 | Vivado 综合成功、0 错误 0 严重告警、时序全满足（WNS=14.2ns） |
-| **Phase 6** | 未开始 | - | `.bit` 固件 | 待完成 |
+| **Phase 6** | 进行中 | 2026-09-05 | `.bit` 固件（`top_digital_clock_board.bit`） | 时间界面上板走秒/左右/冒号验证通过；其余模式验收中 |
 
 **Phase 2 详细记录：**
 
@@ -214,11 +214,12 @@
 
 **Phase 5 详细记录：**
 
-* 依据 HX7A75A 手册引脚表完成约束 `top_digital_clock.xdc`：时钟 Y18@50MHz；4 按键 E3/G4/P19/R19（低有效）；2 开关 N14/P16（低触发）作 KEY4/KEY5；共阳段码 AB18/U17/U18/P14/R14/R18/T18/N17（低点亮）；位选 SEL0~SEL7 高有效（sel[i] 对应右起第 i 位）；LED AA6 高点亮。
+* 依据 HX7A75A 手册引脚表完成约束 `top_digital_clock.xdc`：时钟 Y18@50MHz；4 按键 E3/G4/P19/R19（低有效）；2 开关 N14/P16（低触发）作 KEY4/KEY5；共阳段码 AB18/U17/U18/P14/R14/R18/T18/N17（**低点亮，实测**）；位选 **低有效（低者点亮，实测）**，o_sel[0]=AA18 为最左管；LED AA6 高点亮。
+* 板上实测（bring-up）：段码须取反输出；位选须低有效（高有效会把未选中的 7 只全点亮造成混叠"全 8"）；扫描每位前预留熄灭尾段防残影；时分/分秒冒号点置于 pos6/pos4。时间界面走秒上板验证通过（Phase 6 收尾中）。
+* 待办（Phase 6）：闹钟/日期/倒计时等全部模式上板逐项验收、ILA 在线调试。
 * 板上封装 `top_digital_clock_board.v`：片上电复位（~84ms），4 按键+2 开关拼成 i_key[5:0]。
-* 显示升级为 **8 位**：`seg_driver` 支持 8 位与段码极性参数；日期界面可完整显示 `YYYY-MM-DD`，闹钟界面首位显示闹钟编号。
-* 综合结果：xc7a75tfgg484-2，0 错误 0 严重告警，资源 664 LUT / 430 FF（占用极小），时序全满足（Setup WNS=14.245ns, Hold WNS=0.120ns）。
-* 待办（Phase 6）：Implementation 与比特流生成、上板 ILA 调试与功能验收。
+* 显示升级为 **8 位**：日期界面可完整显示 `YYYY-MM-DD`，闹钟界面首位显示闹钟编号。显示扫描/译码内联于顶层（防残影加换位熄灭尾段；`seg_driver` 保留作模块级参考）。
+* 综合结果：xc7a75tfgg484-2，0 错误 0 严重告警，资源占用极小，时序全满足（Setup WNS=14.245ns, Hold WNS=0.120ns）。
 
 ---
 
@@ -373,3 +374,4 @@ Clock/
 | v0.7 | 2026-09-04 | Phase 4 完成：`fsm_controller` / `seg_driver` / `alarm_led` / `top_digital_clock` 顶层集成仿真通过并记录决策与排障 |
 | v0.8 | 2026-09-04 | Phase 4 Vivado xsim 集成仿真验证通过 |
 | v0.9 | 2026-09-04 | Phase 5 完成：8 位显示适配、HX7A75A XDC、板上封装、综合时序收敛 |
+| v1.0 | 2026-09-05 | Phase 6 上板 bring-up：段码低点亮/位选低有效实测、位序与冒号修正、时间走秒验证通过；清理调试模块 |

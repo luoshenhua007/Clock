@@ -20,7 +20,7 @@ module tb_top_digital_clock;
     wire led;
 
     top_digital_clock #(
-        .CLK_FREQ(CLK_FREQ), .DB_CNT(DB_CNT), .HOLD_CNT(HOLD_CNT)
+        .CLK_FREQ(CLK_FREQ), .DB_CNT(DB_CNT), .HOLD_CNT(HOLD_CNT), .DEMO(0)
     ) u_dut (
         .i_clk(clk), .i_rst_n(rst_n), .i_key(key),
         .o_seg(seg), .o_sel(sel), .o_led(led)

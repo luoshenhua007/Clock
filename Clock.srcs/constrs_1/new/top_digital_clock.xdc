@@ -1,6 +1,6 @@
 ## top_digital_clock.xdc - HX7A75A 开发板管脚约束
 ## 顶层：top_digital_clock_board
-## 时钟 50MHz；按键/开关低有效；数码管共阳（段码低点亮）、位选高有效（PNP 正相）；
+## 时钟 50MHz；按键/开关低有效；数码管共阳（段码低点亮）、位选低有效（低者点亮）；
 ## LED 高电平点亮。
 
 ## 时钟
@@ -32,15 +32,15 @@ set_property PACKAGE_PIN T18  [get_ports {seg[6]}]
 set_property PACKAGE_PIN N17  [get_ports {seg[7]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {seg[*]}]
 
-## 数码管位选（高有效）：sel[i] 对应从左数第 (7-i) 位
-set_property PACKAGE_PIN AA18 [get_ports {sel[0]}]   ;# SEL7(最右)
-set_property PACKAGE_PIN W17  [get_ports {sel[1]}]   ;# SEL6
-set_property PACKAGE_PIN V17  [get_ports {sel[2]}]   ;# SEL5
-set_property PACKAGE_PIN AB20 [get_ports {sel[3]}]   ;# SEL4
-set_property PACKAGE_PIN AA19 [get_ports {sel[4]}]   ;# SEL3
-set_property PACKAGE_PIN V19  [get_ports {sel[5]}]   ;# SEL2
-set_property PACKAGE_PIN V18  [get_ports {sel[6]}]   ;# SEL1
-set_property PACKAGE_PIN Y19  [get_ports {sel[7]}]   ;# SEL0(最左)
+## 数码管位选（低有效）：o_sel[0] 接最左管（实测左右映射）
+set_property PACKAGE_PIN AA18 [get_ports {sel[0]}]
+set_property PACKAGE_PIN W17  [get_ports {sel[1]}]
+set_property PACKAGE_PIN V17  [get_ports {sel[2]}]
+set_property PACKAGE_PIN AB20 [get_ports {sel[3]}]
+set_property PACKAGE_PIN AA19 [get_ports {sel[4]}]
+set_property PACKAGE_PIN V19  [get_ports {sel[5]}]
+set_property PACKAGE_PIN V18  [get_ports {sel[6]}]
+set_property PACKAGE_PIN Y19  [get_ports {sel[7]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {sel[*]}]
 
 ## 提醒 LED（高点亮）

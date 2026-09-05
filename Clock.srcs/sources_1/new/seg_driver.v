@@ -6,11 +6,12 @@
 
 module seg_driver #(
     parameter SEL_ACTIVE_LOW = 0,   // 1 = 位选低有效
-    parameter SEG_ACTIVE_LOW = 0    // 1 = 共阳极，段码低电平点亮（取反输出）
+    parameter SEG_ACTIVE_LOW = 0,   // 1 = 共阳极，段码低电平点亮（取反输出）
+    parameter SCAN_DIV       = 25_000  // 每位点亮时长（clk 周期），约 0.5ms@50M
 )(
     input  wire        i_clk,
     input  wire        i_rst_n,
-    input  wire        i_flag_500hz,
+    input  wire        i_flag_500hz, // 保留端口（扫描改用内部计时器）
     input  wire [31:0] i_digit,      // 8 位 BCD，nibble7=位0（最左）
     input  wire [7:0]  i_dp,         // bit n = 位 n 的小数点
     input  wire [7:0]  i_blank,      // bit n = 熄灭位 n
@@ -19,12 +20,18 @@ module seg_driver #(
 );
 
     reg [2:0] pos_r;
+    reg [14:0] cnt_r;
 
     always @(posedge i_clk or negedge i_rst_n) begin
-        if (!i_rst_n)
+        if (!i_rst_n) begin
             pos_r <= 3'd0;
-        else if (i_flag_500hz)
+            cnt_r <= 15'd0;
+        end else if (cnt_r >= SCAN_DIV[14:0] - 15'd1) begin
+            cnt_r <= 15'd0;
             pos_r <= (pos_r == 3'd7) ? 3'd0 : pos_r + 3'd1;
+        end else begin
+            cnt_r <= cnt_r + 15'd1;
+        end
     end
 
     wire [3:0] dig_w = i_digit[pos_r*4 +: 4];

@@ -12,7 +12,7 @@ module top_digital_clock_board (
     input  wire       sw1,           // 启动/暂停/解除
     input  wire       sw2,           // 复位
     output wire [7:0] seg,           // 共阳段码（低点亮） a..g,dp
-    output wire [7:0] sel,           // 位选（高有效）
+    output wire [7:0] sel,           // 位选（低有效：低者点亮）
     output wire       led            // 提醒 LED（高点亮）
 );
 
