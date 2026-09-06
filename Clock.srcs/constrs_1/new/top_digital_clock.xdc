@@ -8,17 +8,17 @@ set_property PACKAGE_PIN Y18 [get_ports sys_clk]
 set_property IOSTANDARD LVCMOS33 [get_ports sys_clk]
 create_clock -period 20.000 -name sys_clk [get_ports sys_clk]
 
-## 按键（低有效）：MODE / SEL / 加 / 减
+## 按键（低有效）：KEY1=E3 KEY2=G4 KEY3=P19 KEY4=R19（btn[0..3]）
 set_property PACKAGE_PIN E3  [get_ports {btn[0]}]
 set_property PACKAGE_PIN G4  [get_ports {btn[1]}]
 set_property PACKAGE_PIN P19 [get_ports {btn[2]}]
 set_property PACKAGE_PIN R19 [get_ports {btn[3]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {btn[*]}]
 
-## 开关（低有效触发）：SW1 = 启动/暂停/解除，SW2 = 复位
-set_property PACKAGE_PIN N14 [get_ports sw1]
-set_property PACKAGE_PIN P16 [get_ports sw2]
-set_property IOSTANDARD LVCMOS33 [get_ports {sw1 sw2}]
+## 开关（电平）：SW4=sw_group(N15)、SW3=sw_edit(R17)；拨上=1
+set_property PACKAGE_PIN N15 [get_ports sw_group]
+set_property PACKAGE_PIN R17 [get_ports sw_edit]
+set_property IOSTANDARD LVCMOS33 [get_ports {sw_group sw_edit}]
 
 ## 数码管段码（共阳，低点亮）：seg[0]=a seg[1]=b seg[2]=c seg[3]=d
 ##                        seg[4]=e seg[5]=f seg[6]=g seg[7]=dp
