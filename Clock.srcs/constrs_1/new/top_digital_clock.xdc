@@ -43,6 +43,9 @@ set_property PACKAGE_PIN V18  [get_ports {sel[6]}]
 set_property PACKAGE_PIN Y19  [get_ports {sel[7]}]
 set_property IOSTANDARD LVCMOS33 [get_ports {sel[*]}]
 
-## 提醒 LED（高点亮）
-set_property PACKAGE_PIN AA6 [get_ports led]
-set_property IOSTANDARD LVCMOS33 [get_ports led]
+## 提醒 LED（高点亮）：LED1..4 = led[0..3]
+set_property PACKAGE_PIN AA6 [get_ports {led[0]}]
+set_property PACKAGE_PIN V7  [get_ports {led[1]}]
+set_property PACKAGE_PIN W7  [get_ports {led[2]}]
+set_property PACKAGE_PIN AB7 [get_ports {led[3]}]
+set_property IOSTANDARD LVCMOS33 [get_ports {led[*]}]

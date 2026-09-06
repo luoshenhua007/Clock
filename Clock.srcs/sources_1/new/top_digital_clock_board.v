@@ -12,7 +12,7 @@ module top_digital_clock_board (
     input  wire       sw_edit,       // SW3：1=编辑
     output wire [7:0] seg,
     output wire [7:0] sel,
-    output wire       led
+    output wire [3:0] led           // LED1..3=闹钟，LED4=倒计时（高点亮）
 );
 
     reg [21:0] rst_cnt;
