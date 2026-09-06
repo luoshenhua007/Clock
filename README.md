@@ -159,11 +159,12 @@
 | `fsm_controller` | `clk`, `rst_n`, `key_pulse[5:0]` | `view`, `edit`, `cursor[1:0]` | 时间/日期两页切换 + 就地编辑子状态 |
 | `rtc_counter` | `clk`, `rst_n`, `flag_1s`, `set_en`, `date_edit`, `field[2:0]`, `inc/dec` | `hour` / `minute` / `second`, `year[15:0]`, `month` / `day`（BCD） | 时/分/秒与年/月/日计数（闰年、大小月）；`set_en`(时间编辑,暂停走时) 字段 0/1/5=时/分/秒；`date_edit`(日期编辑,不暂停) 字段 2/3/4=年/月/日 |
 | `alarm_clock` | `clk`, `rst_n`, `flag_1s`, `set_en`, `idx[1:0]`, `fld[1:0]`, `inc/dec`, `cur_hour` / `cur_min`, `ack` | `ring`, `ring_no[1:0]`, `en[2:0]`, `sel_hour` / `sel_min` | 3 组闹钟 + 5s/10s 二次提醒 FSM；字段 0=时 1=分 2=使能切换；解除键边沿即时响应 |
-| `countdown` | `clk`, `rst_n`, `flag_1s`, `set_en`, `fld`, `inc/dec`, `run`, `reset` | `min` / `sec`, `done`, `running` | 倒计时（分 00~99 / 秒 00~59）：设定、开始/暂停、复位、结束重开 |
-| `alarm_led` | `clk`, `rst_n`, `flag_1s`, `flag_2hz`, `alarm_ring`, `cnt_done` | `led` | 响铃 2Hz 闪烁 / 倒计时结束 5s 闪烁 |
-| `seg_driver` | `clk`, `rst_n`, `flag_500hz`, `digit[31:0]`, `dp[7:0]`, `blank[7:0]` | `seg[7:0]`, `sel[7:0]` | 八位动态扫描 + 7 段译码 + 小数点/熄灭（极性参数化） |
-| `top_digital_clock` | `clk`, `rst_n`, `key[5:0]` | `seg[7:0]`, `sel[7:0]`, `led` | 顶层集成：6 键译码、八位显示选通、光标闪烁 |
-| `top_digital_clock_board` | `sys_clk`, `btn[3:0]`, `sw1`, `sw2` | `seg[7:0]`, `sel[7:0]`, `led` | 板上封装：上电复位 + 引脚分组映射（供 XDC） |
+| `countdown` | `clk`, `rst_n`, `flag_1s`, `set_en`, `field[1:0]`, `inc/dec`, `run`, `reset` | `h`/`m`/`s`, `done`, `running` | 倒计时 HH:MM:SS（上限 23:59:59）：设定(时/分/秒)、开始/暂停、复位、结束回默认值 |
+| `alarm_led` | `clk`, `rst_n`, `flag_1s`, `flag_2hz`, `alarm_ring`, `cnt_done` | `led` | 响铃 2Hz 闪烁 / 倒计时结束 5s 闪烁（模块参考） |
+| `seg_driver` | `clk`, `rst_n`, `flag_500hz`, `digit[31:0]`, `dp[7:0]`, `blank[7:0]` | `seg[7:0]`, `sel[7:0]` | 八位动态扫描驱动（模块参考；顶层已内联实现） |
+| `fsm_controller` | `clk`, `rst_n`, `key_pulse[5:0]` | `view`, `edit`, `cursor[1:0]` | 早期状态机（备用/参考，最终模式逻辑在顶层实现） |
+| `top_digital_clock` | `clk`, `rst_n`, `key[5:0]`, `sw_group`, `sw_edit` | `seg[7:0]`, `sel[7:0]`, `led[3:0]` | 顶层：四模式(开关电平)译码、时间/日期/闹钟/倒计时显示与就地编辑 |
+| `top_digital_clock_board` | `sys_clk`, `btn[3:0]`, `sw_group`(SW4), `sw_edit`(SW3) | `seg[7:0]`, `sel[7:0]`, `led[3:0]` | 板上封装：上电复位 + KEY1..4/SW4/SW3 引脚映射（供 XDC） |
 
 ---
 
@@ -181,7 +182,7 @@
 
 ### 3.2 阶段任务表
 
-| 阶段 | 周期 | 核心任务 | 交付物/产出 | 验证标准 |
+| 阶段 | 预计周期 | 核心任务 | 交付物/产出 | 验证标准 |
 | :--- | :--- | :--- | :--- | :--- |
 | **Phase 1** | 第 1 天 | 需求分析、系统框图绘制、按键复用方案确认及接口定义 | README.md / 设计文档、模块接口表 | 需求评审通过，6 键功能分配无冲突 |
 | **Phase 2** | 第 2 天 | 编写底层基础模块：`clk_div`（分频）、`key_debounce`（按键消抖、脉冲化及长按检测） | RTL 源码 & Testbench | 独立仿真波形正确，防抖/脉冲参数达标 |
@@ -208,8 +209,15 @@
 | **Phase 2** | 已完成 | 2026-09-01 | `clk_div.v`、`key_debounce.v`、`tb_clk_div.v`、`tb_key_debounce.v` | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 3** | 已完成 | 2026-09-01 | `rtc_counter.v`、`alarm_clock.v`、`countdown.v` 及对应 TB | iverilog 仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
 | **Phase 4** | 已完成 | 2026-09-04 | `fsm_controller.v`、`seg_driver.v`、`alarm_led.v`、`top_digital_clock.v`、`tb_top_digital_clock.v` | iverilog 集成仿真 + Vivado xsim 行为级仿真 + xvlog 编译全部通过 |
-| **Phase 5** | 已完成 | 2026-09-04 | `top_digital_clock.xdc`、板上封装 `top_digital_clock_board.v`、8 位数码管适配 | Vivado 综合成功、0 错误 0 严重告警、时序全满足（WNS=14.2ns） |
+| **Phase 5** | 已完成 | 2026-09-05 | `top_digital_clock.xdc`、板上封装 `top_digital_clock_board.v`、8 位数码管适配 | Vivado 综合成功、0 错误 0 严重告警、时序全满足（WNS=14.2ns） |
 | **Phase 6** | 已完成 | 2026-09-06 | `.bit` 固件（`top_digital_clock_board.bit`） | 时间/日期显示与编辑、闹钟/倒计时显示与编辑、滚动圈、LED 分工与 KEY4 解除均上板验收通过 |
+
+**Phase 1 详细记录：**
+
+* 通读题目，梳理 7 项功能验收点（时间/日期显示、设置、闹钟、倒计时、6 输入约束）。
+* 确定目标板 HX7A75A（xc7a75t）与 Vivado 2024.2；约定源码目录组织与 Git 管理。
+* 绘制系统架构图：6 输入 → 消抖 → 主控状态机 → rtc/alarm/countdown → 段码扫描 → 输出；确立模块接口表。
+* 明确按键复用与"除编辑时间外不停表"的设计要点，形成本文档并评审通过。
 
 **Phase 2 详细记录：**
 
@@ -245,12 +253,23 @@
 
 **Phase 5 详细记录：**
 
-* 依据 HX7A75A 手册引脚表完成约束 `top_digital_clock.xdc`：时钟 Y18@50MHz；4 按键 E3/G4/P19/R19（低有效）；2 开关 N14/P16（低触发）作 KEY4/KEY5；共阳段码 AB18/U17/U18/P14/R14/R18/T18/N17（**低点亮，实测**）；位选 **低有效（低者点亮，实测）**，o_sel[0]=AA18 为最左管；LED AA6 高点亮。
+* 依据 HX7A75A 手册引脚表完成约束 `top_digital_clock.xdc`：时钟 Y18@50MHz；KEY1..4 = E3/G4/P19/R19（低有效）；SW4=N15、SW3=R17（电平）；共阳段码 AB18/U17/U18/P14/R14/R18/T18/N17（**低点亮，实测**）；位选 **低有效（低者点亮，实测）**，o_sel[0]=AA18 为最左管；LED1..4 = AA6/V7/W7/AB7（高点亮）。
 * 板上实测（bring-up）：段码须取反输出；位选须低有效（高有效会把未选中的 7 只全点亮造成混叠"全 8"）；扫描每位前预留熄灭尾段防残影；时分/分秒冒号点置于 pos6/pos4。时间界面走秒上板验证通过（Phase 6 收尾中）。
-* 待办（Phase 6）：闹钟/日期/倒计时等全部模式上板逐项验收、ILA 在线调试。
-* 板上封装 `top_digital_clock_board.v`：片上电复位（~84ms），4 按键+2 开关拼成 i_key[5:0]。
-* 显示升级为 **8 位**：日期界面可完整显示 `YYYY-MM-DD`，闹钟界面首位显示闹钟编号。显示扫描/译码内联于顶层（防残影加换位熄灭尾段；`seg_driver` 保留作模块级参考）。
+* 注：早期交互（旧 6 模式循环、`seg_driver` 六位、`tb_top_digital_clock` 集成用例）为历史实现，最终以 2.x、5.x 描述与 `tb_part1~4` 集成用例为准。
+* 板上封装 `top_digital_clock_board.v`：片上电复位（~84ms），KEY1..4 + SW4/SW3 电平接入顶层（详见 2.1）。
+* 显示升级为 **8 位**：日期界面完整显示 `YYYY-MM-DD`，闹钟界面含编号与 `-` 分隔。显示扫描/译码内联于顶层（防残影加换位熄灭尾段；`seg_driver` 保留作模块级参考）。
 * 综合结果：xc7a75tfgg484-2，0 错误 0 严重告警，资源占用极小，时序全满足（Setup WNS=14.245ns, Hold WNS=0.120ns）。
+
+**Phase 6 详细记录（2026-09-06 上板验收）：**
+
+* 板级 bring-up（实测修正）：段码**低电平点亮**（输出取反）、位选**低有效**（低者点亮）、左右位序 o_sel[0]=AA18 为最左、扫描换位前预留熄灭尾段防残影、时分/分秒冒号点置于 pos6/pos4。
+* 最终交互：SW4/SW3 两开关电平构成**四模式**（时间日期/闹钟倒计时 × 显示/编辑），默认两开关拨下=时间·显示；**编辑中 SW4 无效（组锁存）**，退出编辑后按 SW4 档位显示；闹钟/倒计时组返回显示时保持上次所选对象，仅上电默认闹钟1。
+* 功能验收：时间/日期显示（12/24h + A/P、年月日/星期，周一=1）；时间/日期就地编辑（强制 24h/年月日，退出恢复原视图）；闹钟显示/启停用/编辑（时:分，停用显 `----`）；倒计时 HH.MM.SS（上限 23:59:59，默认 00:01:00）启停/长按复位/编辑，运行第 8 位滚动圈、结束 LED4 闪 5s 并显示默认值。
+* LED 分工：LED1/2/3=闹钟1/2/3，LED4=倒计时结束；KEY4 任何模式解除全部闹钟。
+* 计时稳定性：仅编辑时间暂停走秒，日期查看/编辑、闹钟响铃、倒计时运行均不停表。
+* 关键修复：时间显示 `time_d` 位宽截断导致显示 00；倒计时秒位二进制自减导致 `xx.x0` 乱码（改 BCD 自减）；编辑态误切组。
+* 仿真用例新增 `tb_part1`~`tb_part4`，覆盖显示、编辑、闹钟/倒计时与开关锁存；全部 PASS。
+* 全功能上板验收通过，交付 `top_digital_clock_board.bit`。
 
 ---
 
@@ -313,8 +332,10 @@ Clock/
 │       ├── tb_key_debounce.v      # 按键模块仿真（Phase 2）
 │       ├── tb_rtc_counter.v       # 时钟/日期模块仿真（Phase 3）
 │       ├── tb_alarm_clock.v       # 闹钟模块仿真（Phase 3）
-│       ├── tb_countdown.v         # 倒计时模块仿真（Phase 3）
-│       └── tb_top_digital_clock.v # 顶层集成仿真（Phase 4）
+│       ├── tb_part1.v             # 集成：时间/日期显示（Phase 6）
+│       ├── tb_part2.v             # 集成：时间/日期编辑（Phase 6）
+│       ├── tb_part3.v             # 集成：闹钟/倒计时显示（Phase 6）
+│       └── tb_part4.v             # 集成：闹钟/倒计时编辑与开关锁存（Phase 6）
 ├── Clock.gen/                     # 生成文件（自动生成，勿手改）
 ├── Clock.runs/                    # 综合/实现/比特流运行目录（自动生成）
 │   ├── synth_1/                   # 综合运行（含综合报告）
@@ -409,3 +430,4 @@ Clock/
 | v1.1 | 2026-09-05 | 交互重构：时间/日期两页+就地编辑，日期显示/编辑不暂停走时，增加秒可调；上板验收通过 |
 | v1.2 | 2026-09-05 | 编辑支持长按自动连加/连减（~8Hz 重复），长按期间字段常亮不闪；上板验收通过 |
 | v1.3 | 2026-09-06 | 重构：双开关电平四模式（编辑中 SW4 锁存），闹钟/倒计时显示与编辑、倒计时滚动圈/结束回默认值，BCD 递减修复；全功能上板验收通过 |
+| v1.4 | 2026-09-06 | 补全 Phase 1/6 详细记录；修正过时接口/目录描述；README 终稿 |
