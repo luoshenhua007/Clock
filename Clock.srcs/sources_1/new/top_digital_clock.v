@@ -355,8 +355,8 @@ module top_digital_clock #(
             seg_out_r = ~8'h40;                      // '-'（中间横）低点亮
         else if (ac_disp && ac_sel && scan_pos == 3'd0)
             seg_out_r = cd_run ? ~ring_code : ~8'h40; // 运行=滚动圈，否则 '-'
-        else if (!td_edit && !view_time && !date_week && fmt_12 && scan_pos == 3'd0)
-            seg_out_r = ~(pm ? 8'h73 : 8'h77);
+        else if (td_disp && !view_time && !date_week && fmt_12 && scan_pos == 3'd0)
+            seg_out_r = ~(pm ? 8'h73 : 8'h77);      // 仅时间显示页的第8位 A/P
         else
             seg_out_r = ~(seg_code | (dp_d[scan_pos] ? 8'h80 : 8'h00));
     end
