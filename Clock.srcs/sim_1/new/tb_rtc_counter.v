@@ -136,31 +136,31 @@ module tb_rtc_counter;
         run_seconds(1, 2);
         chk("A1", h_mid==8'h00 && mn_mid==8'h00 && se_mid==8'h00, "time not 00:00:00");
         chk_date("A2", 16'h2026, 8'h02, 8'h01, yr_mid, mo_mid, da_mid);
-        $display("PASS A: 月末进位");
+        $display("PASS A: end-of-month rollover");
 
         // B: 2026(平) 02-28 +2s -> 3/1
         run_seconds(2, 2);
         chk_date("B1", 16'h2026, 8'h03, 8'h01, yr_fb, mo_fb, da_fb);
-        $display("PASS B: 平年二月");
+        $display("PASS B: non-leap February");
 
         // C: 2024(闰) 02-28 +2s -> 2/29；再一天 -> 3/1
         run_seconds(3, 2);
         chk_date("C1", 16'h2024, 8'h02, 8'h29, yr_lp, mo_lp, da_lp);
         run_seconds(3, 86400);
         chk_date("C2", 16'h2024, 8'h03, 8'h01, yr_lp, mo_lp, da_lp);
-        $display("PASS C: 闰年二月");
+        $display("PASS C: leap February");
 
         // D: 2000(闰) 02-28 -> 2/29；再一天 -> 3/1
         run_seconds(4, 2);
         chk_date("D1", 16'h2000, 8'h02, 8'h29, yr_l0, mo_l0, da_l0);
         run_seconds(4, 86400);
         chk_date("D2", 16'h2000, 8'h03, 8'h01, yr_l0, mo_l0, da_l0);
-        $display("PASS D: 2000 闰");
+        $display("PASS D: year 2000 leap");
 
         // E: 2100(非闰世纪) 02-28 +2s -> 3/1
         run_seconds(5, 2);
         chk_date("E1", 16'h2100, 8'h03, 8'h01, yr_cn, mo_cn, da_cn);
-        $display("PASS E: 2100 非闰");
+        $display("PASS E: year 2100 not leap");
 
         // F: 字段调整（u_adj：2026-03-31 12:34:56，全程不走秒）
         adj_up(3'd0);                  // 时 12->13

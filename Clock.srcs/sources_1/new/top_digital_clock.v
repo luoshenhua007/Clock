@@ -19,7 +19,7 @@ module top_digital_clock #(
 )(
     input  wire       i_clk,
     input  wire       i_rst_n,
-    input  wire [5:0] i_key,          // [0]=KEY1 [1]=KEY2 [2]=KEY3 [3]=KEY4（低有效）
+    input  wire [3:0] i_key,          // [0]=KEY1 [1]=KEY2 [2]=KEY3 [3]=KEY4（低有效）
     input  wire       i_sw_group,     // SW4
     input  wire       i_sw_edit,      // SW3
     output wire [7:0] o_seg,
@@ -140,8 +140,7 @@ module top_digital_clock #(
     // ---- 闹钟 ----
     wire [7:0] alm_h, alm_m;
     wire [2:0] alm_en;
-    wire       alm_ring;
-    wire [1:0] alm_rno;
+    wire [2:0] alm_ring;        // 三组独立响铃
     wire alm_edit    = ac_edit && !ac_sel;              // 闹钟编辑（时/分）
     wire alm_toggle  = ac_disp && !ac_sel && kp[2];     // KEY3 启停用当前闹钟
     wire [1:0] alm_fld = alm_edit ? cursor[1:0] : 2'd2; // 编辑取字段，否则使能位
@@ -157,7 +156,7 @@ module top_digital_clock #(
         .i_inc(alm_up), .i_dec(alm_dn),
         .i_cur_hour(hour), .i_cur_min(min), .i_ack(kp[3]),
         .o_sel_hour(alm_h), .o_sel_min(alm_m), .o_en(alm_en),
-        .o_ring(alm_ring), .o_ring_no(alm_rno), .o_state());
+        .o_ring(alm_ring));
 
     // ---- 倒计时 ----
     wire [7:0] ch, cm, cs;
@@ -198,9 +197,9 @@ module top_digital_clock #(
             else if (cnt5 != 0 && flag_1s) cnt5 <= cnt5 - 3'd1;
         end
     end
-    assign o_led[0] = (alm_ring && alm_rno == 2'd0) ? blk_ph : 1'b0;
-    assign o_led[1] = (alm_ring && alm_rno == 2'd1) ? blk_ph : 1'b0;
-    assign o_led[2] = (alm_ring && alm_rno == 2'd2) ? blk_ph : 1'b0;
+    assign o_led[0] = alm_ring[0] ? blk_ph : 1'b0;
+    assign o_led[1] = alm_ring[1] ? blk_ph : 1'b0;
+    assign o_led[2] = alm_ring[2] ? blk_ph : 1'b0;
     assign o_led[3] = (cnt5 != 0) ? blk_ph : 1'b0;
 
     // ---- 12h / 星期换算 ----

@@ -5,7 +5,7 @@
 // key_debounce_one 为单按键子模块，本模块通过 generate 例化 KEY_NUM 个。
 
 module key_debounce #(
-    parameter KEY_NUM        = 6,
+    parameter KEY_NUM        = 4,
     parameter KEY_ACTIVE_LOW = 1,
     parameter DEBOUNCE_CNT   = 1_000_000,
     parameter HOLD_CNT       = 25_000_000,

@@ -12,7 +12,7 @@ module tb_part2;
 
     reg clk = 0;
     reg rst_n = 0;
-    reg [5:0] key = 6'b111111;
+    reg [3:0] key = 4'b1111;
     reg sw_group = 1;      // SW4 高(拨下)：时间/日期组
     reg sw_edit = 0;       // SW3 低(拨上)：编辑
     wire [7:0] seg, sel;
@@ -34,9 +34,9 @@ module tb_part2;
 
     task tap(input integer k);
         begin
-            @(negedge clk); key = key & ~(6'b1 << k);
+            @(negedge clk); key = key & ~(4'b1 << k);
             cyc(DB_CNT + 10);
-            @(negedge clk); key = 6'b111111;
+            @(negedge clk); key = 4'b1111;
             cyc(DB_CNT + 10);
         end
     endtask

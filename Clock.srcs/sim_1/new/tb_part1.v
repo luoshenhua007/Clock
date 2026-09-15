@@ -11,7 +11,7 @@ module tb_part1;
 
     reg clk = 0;
     reg rst_n = 0;
-    reg [5:0] key = 6'b111111;
+    reg [3:0] key = 4'b1111;
     reg sw_group = 1;      // 两开关均“上”= 时间/日期·显示（实测）
     reg sw_edit = 1;
     wire [7:0] seg, sel;
@@ -33,9 +33,9 @@ module tb_part1;
 
     task tap(input integer k);
         begin
-            @(negedge clk); key = key & ~(6'b1 << k);
+            @(negedge clk); key = key & ~(4'b1 << k);
             cyc(DB_CNT + 10);
-            @(negedge clk); key = 6'b111111;
+            @(negedge clk); key = 4'b1111;
             cyc(DB_CNT + 10);
         end
     endtask

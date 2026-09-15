@@ -24,7 +24,7 @@ module top_digital_clock_board (
     top_digital_clock u_clock (
         .i_clk  (sys_clk),
         .i_rst_n(rst_n),
-        .i_key  ({2'b11, btn[3], btn[2], btn[1], btn[0]}),
+        .i_key  (btn),
         .i_sw_group(sw_group),
         .i_sw_edit (sw_edit),
         .o_seg  (seg),
