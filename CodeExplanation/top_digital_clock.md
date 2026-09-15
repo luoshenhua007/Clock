@@ -15,7 +15,7 @@
 | 方向 | 信号 | 说明 |
 | :-- | :-- | :-- |
 | 输入 | `i_clk`,`i_rst_n` | 时钟/复位 |
-| 输入 | `i_key[5:0]` | [0]=KEY1 [1]=KEY2 [2]=KEY3 [3]=KEY4（低有效） |
+| 输入 | `i_key[3:0]` | [0]=KEY1 [1]=KEY2 [2]=KEY3 [3]=KEY4（低有效） |
 | 输入 | `i_sw_group` | SW4 电平（实测拨下读到 1） |
 | 输入 | `i_sw_edit` | SW3 电平 |
 | 输出 | `o_seg[7:0]` | 段码（含 dp） |
@@ -30,7 +30,7 @@
 - **长按连加**：`rep_cnt/rep_tick` + `kh[1]/kh[2]` 产生 +/− 重复脉冲 → 对应"长按连加/连减"。
 - **闹钟控制**：`alm_edit` 时 `i_set_en` 编辑时/分；`alm_toggle` 在显示页切换使能；`i_ack=kp[3]` → 对应"闹钟设置/启停用/KEY4 解除"。
 - **倒计时控制**：`cnt_run`（短按启停）、`cnt_reset`（`kh[2]` 上升沿长按复位）、`cnt_set/cnt_field/cnt_inc/cnt_dec`（编辑）→ 对应"倒计时设定/暂停/复位"。
-- **LED**：`o_led[0..2]=alm_ring & 编号对应`，`o_led[3]=` 倒计时完成 5s 闪烁（`cnt5`）→ 对应"LED 分工"。
+- **LED**：`o_led[i]=alm_ring[i]?闪烁:0`（三组闹钟各自独立），`o_led[3]=` 倒计时完成 5s 闪烁（`cnt5`）→ 对应"LED 分工"。
 - **12h/星期**：`hv12/v12` 换算与 A/P；Zeller 计算 `week_day` → 对应"12/24h、星期显示"。
 - **显示选通 always**：按模式选择 `digit_d/blank_d/dp_d/blink_g/seg_ovr`（时间、日期、星期、闹钟含 `-`/`----`、倒计时含滚动圈）→ 对应各显示格式。
 - **扫描/段码**：`scan_cnt/scan_pos` 逐位扫描，`seg_code` 译码，输出覆盖逻辑处理 A/P、`-`、滚动圈，且换位前熄灭尾段防残影 → 对应"8 位显示、极性、防残影"。
@@ -105,8 +105,8 @@ else                     seg=~(段码|dp);
 
 **（6）LED 与滚动圈**
 ```verilog
-o_led[0..2] = (alm_ring && alm_rno==i) ? blk_ph : 0;  // 各闹钟独立闪
-o_led[3]    = (cnt5!=0) ? blk_ph : 0;                 // 倒计时完成 5s
+o_led[i] = alm_ring[i] ? blk_ph : 0;   // LED1..3 对应 3 组闹钟，各自独立闪
+o_led[3] = (cnt5!=0) ? blk_ph : 0;     // 倒计时完成 5s
 ring: cd_run && flag_1s 时 0→1→…→5→0 循环，对应第8位滚动圈
 ```
 
